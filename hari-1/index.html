@@ -138,34 +138,23 @@
   // Ikutin urutan checkpoint di README.md. Contoh prompt ada di sana.
   // ==========================================================
 
-  const hadiah = {
-    ssr: [
-      { n: "Golden Hoodie", e: "🏆" },
-      { n: "Legendary Laptop", e: "💻" },
-      { n: "Diamond Ticket", e: "💎" }
-    ],
-    epic: [
-      { n: "Keyboard RGB", e: "⌨️" },
-      { n: "ETHJKT Badge", e: "🎖️" },
-      { n: "Coffee Boost", e: "☕" }
-    ],
-    rare: [
-      { n: "Sticker Pack", e: "✨" },
-      { n: "Notebook Dev", e: "📓" },
-      { n: "Mouse Pad", e: "🖱️" }
-    ],
-    common: [
-      { n: "Air Mineral", e: "🥤" },
-      { n: "Pulpen", e: "🖊️" },
-      { n: "Permen", e: "🍬" },
-      { n: "Kertas Catatan", e: "📝" }
-    ]
-  };
+  const API_BASE = "https://pokeapi.co/api/v2";
+  const CACHE_KEY = "ethjkt-pokemon-cache-v1";
+  const DEFAULT_POKEMON_COUNT = 1025;
+  const MAX_ROLL_ATTEMPTS = 8;
+  const SSR_POKEMON_IDS = [
+    144, 145, 146, 150, 151, 243, 244, 245, 249, 250, 251, 377, 378, 379,
+    380, 381, 382, 383, 384, 385, 386, 480, 481, 482, 483, 484, 487, 488,
+    491, 492, 493, 494, 643, 644, 646, 716, 717, 718, 719, 720, 721, 785,
+    786, 787, 788, 789, 790, 791, 792, 800, 801, 802, 807, 888, 889, 890,
+    891, 892, 893, 894, 895, 896, 897, 898, 905
+  ];
 
   let pity = 0;
   let total = 0;
   let ssrCount = 0;
   let pityTarget = acakPityTarget();
+  let pokemonCount = DEFAULT_POKEMON_COUNT;
 
   const card = document.querySelector("#card");
   const cardEmoji = document.querySelector("#cardEmoji");
@@ -179,8 +168,95 @@
   const tarik1 = document.querySelector("#tarik1");
   const tarik10 = document.querySelector("#tarik10");
 
-  function pilihAcak(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
+  function ambilCache() {
+    try {
+      return JSON.parse(localStorage.getItem(CACHE_KEY)) || {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function simpanCache(cache) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    } catch (error) {
+      // Kalau storage penuh atau diblokir browser, gacha tetap jalan tanpa cache.
+    }
+  }
+
+  async function fetchJson(url) {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Gagal ambil data PokeAPI: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async function updatePokemonCount() {
+    try {
+      const data = await fetchJson(`${API_BASE}/pokemon?limit=1`);
+      pokemonCount = data.count || DEFAULT_POKEMON_COUNT;
+    } catch (error) {
+      pokemonCount = DEFAULT_POKEMON_COUNT;
+    }
+  }
+
+  function pilihIdPokemon(kelasTarget) {
+    if (kelasTarget === "ssr") {
+      return SSR_POKEMON_IDS[Math.floor(Math.random() * SSR_POKEMON_IDS.length)];
+    }
+
+    return Math.floor(Math.random() * pokemonCount) + 1;
+  }
+
+  function formatNama(nama) {
+    return nama
+      .split("-")
+      .map((kata) => kata.charAt(0).toUpperCase() + kata.slice(1))
+      .join(" ");
+  }
+
+  function hitungBaseStatTotal(pokemon) {
+    return pokemon.stats.reduce((totalStat, stat) => totalStat + stat.base_stat, 0);
+  }
+
+  function tentukanRarity(pokemon, species) {
+    const baseStatTotal = hitungBaseStatTotal(pokemon);
+
+    if (species.is_legendary || species.is_mythical) return "ssr";
+    if (baseStatTotal >= 530 || species.capture_rate <= 45) return "epic";
+    if (baseStatTotal >= 430 || species.capture_rate <= 90) return "rare";
+    return "common";
+  }
+
+  async function ambilPokemon(id) {
+    const cache = ambilCache();
+
+    if (cache[id]) {
+      return cache[id];
+    }
+
+    const pokemon = await fetchJson(`${API_BASE}/pokemon/${id}`);
+    const species = await fetchJson(pokemon.species.url);
+    const hasil = {
+      id: pokemon.id,
+      nama: formatNama(pokemon.name),
+      emoji: "⚪",
+      kelas: tentukanRarity(pokemon, species),
+      sprite: pokemon.sprites.other["official-artwork"].front_default || pokemon.sprites.front_default,
+      types: pokemon.types.map((typeInfo) => typeInfo.type.name),
+      baseStatTotal: hitungBaseStatTotal(pokemon),
+      captureRate: species.capture_rate,
+      isLegendary: species.is_legendary,
+      isMythical: species.is_mythical,
+      generation: species.generation.name
+    };
+
+    cache[id] = hasil;
+    simpanCache(cache);
+    return hasil;
   }
 
   // Pity dibuat random supaya tiap siklus SSR punya target jaminan berbeda.
@@ -188,26 +264,39 @@
     return Math.floor(Math.random() * 6) + 7;
   }
 
-  function rollSatu() {
+  function rollRarity() {
     total += 1;
     pity += 1;
 
     const acak = Math.random();
-    let kelas = "common";
 
     if (pity >= pityTarget || acak < 0.03) {
-      kelas = "ssr";
       pity = 0;
       ssrCount += 1;
       pityTarget = acakPityTarget();
+      return "ssr";
     } else if (acak < 0.10) {
-      kelas = "epic";
+      return "epic";
     } else if (acak < 0.30) {
-      kelas = "rare";
+      return "rare";
     }
 
-    const item = pilihAcak(hadiah[kelas]);
-    return { kelas, nama: item.n, emoji: item.e };
+    return "common";
+  }
+
+  async function rollSatu() {
+    const kelasTarget = rollRarity();
+
+    for (let i = 0; i < MAX_ROLL_ATTEMPTS; i += 1) {
+      const pokemon = await ambilPokemon(pilihIdPokemon(kelasTarget));
+
+      if (kelasTarget === "ssr" || pokemon.kelas === kelasTarget) {
+        return { ...pokemon, kelas: kelasTarget };
+      }
+    }
+
+    const pokemon = await ambilPokemon(pilihIdPokemon(kelasTarget));
+    return { ...pokemon, kelas: kelasTarget };
   }
 
   function tampilkan(hasil) {
@@ -238,19 +327,26 @@
     }
   }
 
-  function tarik(jumlahTarikan) {
+  async function tarik(jumlahTarikan) {
     let hasilTerakhir;
 
+    tarik1.disabled = true;
+    tarik10.disabled = true;
+    cardName.textContent = "Loading PokeAPI...";
+
     for (let i = 0; i < jumlahTarikan; i += 1) {
-      hasilTerakhir = rollSatu();
+      hasilTerakhir = await rollSatu();
       tambahRiwayat(hasilTerakhir);
     }
 
     tampilkan(hasilTerakhir);
+    tarik1.disabled = false;
+    tarik10.disabled = false;
   }
 
   tarik1.addEventListener("click", () => tarik(1));
   tarik10.addEventListener("click", () => tarik(10));
+  updatePokemonCount();
   tampilkan({ kelas: "", nama: "Tekan TARIK", emoji: "?" });
 </script>
 </body>
