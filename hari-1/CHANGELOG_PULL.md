@@ -6,7 +6,7 @@
 - Tombol `TARIK 1x` mengambil satu Pokemon.
 - Tombol `TARIK 10x` mengambil sepuluh Pokemon.
 - Hasil pull muncul di kartu utama dengan gambar Pokemon.
-- Riwayat pull terakhir muncul di bagian bawah sebagai badge nomor Pokemon.
+- Riwayat pull terakhir muncul di bagian bawah sebagai thumbnail Pokemon.
 - Total pull dan jumlah SSR ikut bertambah otomatis.
 
 ## Aturan rarity
@@ -26,9 +26,9 @@ Setelah SSR keluar, pity balik ke `0` dan target pity baru akan diacak lagi.
 
 ## Cara pakai PokeAPI
 
-- App mengambil catalog dari endpoint `/pokemon-species?limit=2000`, lalu menyimpannya di `localStorage`.
-- Saat pull, app memilih Pokemon dari catalog lokal supaya `TARIK 10x` tidak mengirim banyak request.
-- Riwayat tidak memakai gambar remote, supaya browser tidak terkena batas request gambar dari GitHub.
-- Setelah semua pull selesai, app baru mengambil detail Pokemon terakhir dari `/pokemon-species/{id}`.
-- Dari species terakhir, app memilih default variety lalu mengambil detail Pokemon dari URL `/pokemon/{id atau name}` yang diberikan PokeAPI.
+- `TARIK 10x` mengambil daftar Pokemon dari endpoint `/pokemon?limit=10&offset=...` dalam satu request REST.
+- Riwayat memakai thumbnail sprite Pokemon berdasarkan ID dari response PokeAPI.
+- `TARIK 10x` tidak request detail satu per satu.
+- `TARIK 1x` mengambil detail Pokemon dari `/pokemon-species/{id}`.
+- Dari species, app memilih default variety lalu mengambil detail Pokemon dari URL `/pokemon/{id atau name}` yang diberikan PokeAPI.
 - Detail Pokemon juga disimpan di `localStorage`, jadi Pokemon yang sudah pernah diambil tidak selalu request ulang.
