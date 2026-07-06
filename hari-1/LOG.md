@@ -1,46 +1,69 @@
-# Log Hari 1 — Fitur Tarik (Pull) Gacha
+# Log Hari 1 — Poké Gacha (Simulator Gacha Pokémon)
 
-Penjelasan santai soal apa yang barusan dibuat di `index.html`.
+Penjelasan santai soal isi `index.html`. Sekarang gacha-nya menarik
+**Pokémon asli** langsung dari internet (PokeAPI), lengkap dengan gambar,
+tipe, dan statistik betulan.
 
-## Apa yang berubah?
+## Apa yang berubah dari versi sebelumnya?
 
-Tampilan (HTML + CSS) tadinya sudah jadi, tapi tombol **TARIK** belum ada fungsinya.
-Sekarang logikanya sudah diisi, jadi tombolnya benar-benar bisa "menarik" hadiah acak.
+Versi lama cuma emoji buatan sendiri (kelihatan "AI banget").
+Versi baru mengambil data nyata dari **PokeAPI** (https://pokeapi.co) —
+database Pokémon gratis untuk umum. Jadi tiap tarikan memunculkan Pokémon
+sungguhan dengan artwork resminya.
 
-## Cara kerjanya (per bagian)
+## Cara kerjanya (bahasa gampang)
 
-1. **Data hadiah** — ada 4 tingkat kelangkaan (rarity):
-   - `common` (paling gampang keluar) → `rare` → `epic` → `ssr` (paling langka & keren).
-   - Tiap hadiah punya nama + emoji.
+1. **Roll rarity dulu (pakai pity)** — sama seperti gacha beneran:
+   - **SSR 3%**, **EPIC 10%**, **RARE 30%**, sisanya **COMMON**.
+   - **Pity:** kalau sampai tarikan ke-10 belum dapat SSR, tarikan ke-10
+     itu **dijamin SSR**. Bar kuning menunjukkan progresnya.
 
-2. **Sekali tarik (`rollSatu`)** — pakai angka acak `Math.random()`:
-   - Peluang **SSR 3%**, **EPIC 10%**, **RARE 30%**, sisanya **COMMON**.
+2. **Baru ambil Pokémon yang cocok** dengan tier hasil roll:
+   - **SSR** → Pokémon **Legendary / Mythical** asli (Mewtwo, Mew, Rayquaza, dll).
+     Daftar ID-nya sudah diverifikasi lewat data `is_legendary` / `is_mythical`.
+   - **EPIC** → Pokémon "pseudo-legendary" super kuat (Dragonite, Garchomp, dll).
+   - **RARE & COMMON** → Pokémon acak dari National Dex (nomor 1–1025).
 
-3. **Pity (biar nggak apes terus)** — ini yang bikin adil:
-   - Tiap tarik, hitungan "pity" naik 1.
-   - Kalau sampai tarikan **ke-10** belum dapat SSR, tarikan ke-10 itu **dijamin SSR**.
-   - Begitu dapat SSR, pity balik ke 0.
-   - Progress bar kuning di atas menunjukkan seberapa dekat kamu ke SSR gratis.
+3. **Ambil + gabung data** dari dua alamat API:
+   - `/pokemon/{id}` → gambar artwork, tipe, base stat.
+   - `/pokemon-species/{id}` → status legendary/mythical.
+   Keduanya diambil **barengan** (Promise.all) biar cepat.
 
-4. **Tampilan & animasi (`tampilkan`)** — kartu menampilkan hasil dengan efek "pop",
-   dan khusus SSR ada efek getar + kilau emas.
+4. **Shiny!** — tiap Pokémon punya peluang **1/40** keluar versi *shiny*
+   (warna langka & mengkilap). Kalau hoki, muncul badge "✨ SHINY" dan
+   gambar shiny-nya yang dipakai.
 
-5. **Riwayat & tombol** — hasil terakhir dicatat sebagai chip kecil (maks 12).
-   - **TARIK 1x** → menarik sekali.
-   - **TARIK 10x** → menarik 10 kali beruntun.
+5. **Tampilan kartu** menunjukkan:
+   - Artwork resmi + nomor Pokédex + nama.
+   - Badge **tipe** dengan warna resminya (contoh: grass hijau, fire oranye).
+   - **6 bar base stat** (HP, ATK, DEF, SpA, SpD, SPD).
+   - Border kartu berubah warna sesuai rarity, SSR ada efek getar + kilau emas.
 
-## Sudah dites?
+6. **Hemat internet (cache)** — Pokémon yang sudah pernah ditarik disimpan
+   di memori, jadi tidak minta ke server berulang-ulang. Ini juga mematuhi
+   aturan *fair use* PokeAPI.
 
-Ya. Logikanya diuji pakai simulasi 100.000 tarikan:
-- Sebaran rarity sesuai harapan (common paling banyak).
-- **Rentetan tanpa SSR maksimal 9** → artinya pity bekerja, nggak pernah tembus 10.
-- Setiap jendela 10 tarikan pasti menghasilkan minimal 1 SSR.
+7. **Tombol** — **PULL 1x** menarik sekali, **PULL 10x** menarik 10 kali
+   beruntun. Selama mengambil data, tombol dikunci + muncul spinner loading.
+
+## Sudah dites? Ya, beneran. ✅
+
+Selain cek logika, saya jalankan tes **end-to-end pakai browser sungguhan
+(Chrome headless)**:
+- Klik PULL 1x → muncul Pokémon asli (gambar tampil, 2 tipe, 6 bar stat). ✔
+- Klik PULL 10x → total jadi 11, pity ter-update, riwayat terisi. ✔
+- **0 error JavaScript** di console. ✔
+- Data fetch + cache + pity + anti-tabrakan pool sudah diuji terpisah juga. ✔
 
 ## Cara lihat hasilnya
 
-Buka file `hari-1/index.html` di browser (dobel klik), lalu pencet tombol **TARIK**.
+Dobel-klik `hari-1/index.html` di browser (butuh koneksi internet karena
+gambar & data diambil online), lalu pencet **PULL**. Tarik terus sampai bar
+pity penuh untuk dapat Legendary gratis, dan semoga hoki dapat **shiny**! ✨
 
-## Catatan
+## Riwayat commit (kecil-kecil, sesuai aturan)
 
-Semua perubahan sudah di-commit dengan pesan:
-`feat: implement gacha pull feature with pity system in hari-1`
+1. `feat: redesign gacha UI shell + local rarity/pity engine`
+2. `feat: fetch real Pokémon from PokeAPI with caching + async pulls`
+3. `feat: add type badges, base-stat bars, and shiny variants`
+4. `docs: update LOG.md for Pokémon gacha`
