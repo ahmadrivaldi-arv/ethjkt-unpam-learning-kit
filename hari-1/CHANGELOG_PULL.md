@@ -15,7 +15,8 @@
 - Epic bisa keluar kalau angka random kurang dari `0.10`.
 - Rare bisa keluar kalau angka random kurang dari `0.30`.
 - Selain itu hasilnya Common.
-- Data Pokemon dari API dipakai untuk menampilkan nama, gambar, type, total stat, capture rate, dan status legendary/mythical.
+- Catalog Pokemon dari API dipakai untuk memilih nama dan ID saat pull.
+- Detail Pokemon dari API dipakai untuk kartu hasil terakhir, seperti type, total stat, capture rate, dan status legendary/mythical.
 
 ## Random pity
 
@@ -25,7 +26,8 @@ Setelah SSR keluar, pity balik ke `0` dan target pity baru akan diacak lagi.
 
 ## Cara pakai PokeAPI
 
-- App mengambil jumlah Pokemon dari endpoint `/pokemon?limit=1`.
-- Saat pull, app mengambil detail dari `/pokemon/{id}`.
-- App juga mengambil species dari `/pokemon-species/{id}` lewat URL species yang diberikan PokeAPI.
-- Data disimpan di `localStorage`, jadi Pokemon yang sudah pernah diambil tidak selalu request ulang.
+- App mengambil catalog dari endpoint `/pokemon-species?limit=2000`, lalu menyimpannya di `localStorage`.
+- Saat pull, app memilih Pokemon dari catalog lokal supaya `TARIK 10x` tidak mengirim banyak request.
+- Setelah semua pull selesai, app baru mengambil detail Pokemon terakhir dari `/pokemon-species/{id}`.
+- Dari species terakhir, app memilih default variety lalu mengambil detail Pokemon dari URL `/pokemon/{id atau name}` yang diberikan PokeAPI.
+- Detail Pokemon juga disimpan di `localStorage`, jadi Pokemon yang sudah pernah diambil tidak selalu request ulang.
