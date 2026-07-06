@@ -122,6 +122,56 @@ let pity = 0;      // tarikan sejak Legendary terakhir
 let total = 0;     // total tarikan
 let ssrCount = 0;  // total Legendary/Mythical didapat
 
+// Koleksi Pokédex: id -> data Pokémon yang pernah didapat (+ jumlahnya).
+let collection = {};
+
+// ---------- Simpan / muat progres (localStorage) ----------
+// Semua progres bertahan walau browser ditutup / halaman di-refresh.
+const STORAGE_KEY = "pokegacha_state_v1";
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ total, pity, ssrCount, collection }));
+  } catch (e) {
+    // localStorage bisa penuh atau diblokir — abaikan, game tetap jalan.
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    total = s.total || 0;
+    pity = s.pity || 0;
+    ssrCount = s.ssrCount || 0;
+    collection = s.collection || {};
+  } catch (e) {
+    // Data rusak -> mulai dari nol saja.
+    collection = {};
+  }
+}
+
+// Catat satu Pokémon ke koleksi (atau tambah hitungannya kalau sudah punya).
+function recordCatch(result) {
+  const existing = collection[result.id];
+  if (existing) {
+    existing.count += 1;
+    if (result.shiny) existing.shiny = true; // sekali shiny, selamanya ditandai shiny
+  } else {
+    collection[result.id] = {
+      id: result.id,
+      name: result.name,
+      artwork: result.artwork,
+      shinyArtwork: result.shinyArtwork,
+      fallbackArt: result.fallbackArt,
+      types: result.types,
+      shiny: !!result.shiny,
+      count: 1,
+    };
+  }
+}
+
 // ---------- Elemen DOM ----------
 const el = {
   card: document.getElementById("card"),
@@ -269,9 +319,11 @@ async function pull() {
     const shiny = Math.random() < SHINY_RATE && !!mon.shinyArtwork;
     const result = { ...mon, kelas, shiny };
     commitCounters(kelas); // hanya dihitung kalau fetch sukses
+    recordCatch(result);   // masukkan ke koleksi Pokédex
     updateStats();
     render(result);
     addHistory(result);
+    saveState();           // simpan progres ke localStorage
     return result;
   } catch (e) {
     showError(e.message);
@@ -295,3 +347,7 @@ el.tarik10.addEventListener("click", async () => {
   }
   setLoading(false);
 });
+
+// ---------- Mulai: pulihkan progres yang tersimpan ----------
+loadState();
+updateStats();
